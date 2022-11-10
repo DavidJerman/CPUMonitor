@@ -13,7 +13,7 @@ int main() {
     std::cout << "CPU name: " << CPUM::getBrandName() << std::endl;
 
     // Family, Model, Stepping
-    std::cout << "CPU family name: " << CPUM::getFamilyName() << std::endl;
+    std::cout << "CPU microarchitecture: " << CPUM::getMicroarchitecture() << std::endl;
     std::cout << "Base Model: " << CPUM::getBaseModelNumber() << std::endl;
     std::cout << "Base Family: " << CPUM::getFamilyBaseNumber() << std::endl;
     std::cout << "Extended Model: " << CPUM::getExtendedModelNumber() << std::endl;
@@ -84,6 +84,9 @@ int main() {
 
     // More feature identifiers
     // ...
+
+    // Frequency - windows
+    std::cout << "Linux CPU frequency: " << CPUM::avgCoreFrequencyGHz() << " GHz" << std::endl;
 
     return 0;
 }

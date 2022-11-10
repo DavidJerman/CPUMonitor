@@ -6,15 +6,22 @@
 // https://www.amd.com/system/files/TechDocs/25481.pdf
 //
 
+
+// Includes
+#include <fstream>
+
+
 // Certain constants
 #define AMDCpuVendor   "AuthenticAMD"
 #define IntelCpuVendor "GenuineIntel"
+#define cpuinfoFile    "/proc/cpuinfo"
 
 
 // Type definitions
 typedef const char *cString;
 typedef unsigned char uint8;
 typedef unsigned int uint32;
+typedef unsigned long long uint64;
 
 
 // This works with AMD CPUs for now
@@ -24,7 +31,7 @@ namespace CPUM {
     cString getBrandName();
 
     // The character buffer should be at least 16-bytes big
-    void saveDataEABCDXToCStringBuffer(uint32 data[4], char *beg, const char *const end);
+    void saveDataEABCDXToCStringBuffer(uint32 data[4], char *beg, const char * end);
 
     cString getVendorName();
 
@@ -34,9 +41,11 @@ namespace CPUM {
 
     uint32 getFamilyExtendedNumber();
 
-    cString getFamilyName();
+    cString getMicroarchitecture();
 
-    cString familyNumberToNameAMD(uint32 familyNumber);
+    cString getMicroarchitectureAMD(uint32 familyNumber, uint32 model, uint32 extendedModel);
+
+    cString getMicroarchitectureIntel(uint32 familyNumber, uint32 model, uint32 extendedModel);
 
     uint32 getModelNumber();
 
@@ -128,6 +137,11 @@ namespace CPUM {
     bool hasSSE2();
 
     bool hasHTT();
+
+    // Monitoring CPU performance
+    uint32 avgCoreFrequency();
+
+    float avgCoreFrequencyGHz();
 }
 
 
