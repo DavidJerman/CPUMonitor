@@ -9,6 +9,9 @@
 
 // Includes
 #include <fstream>
+#include <string>
+#include <algorithm>
+#include <vector>
 
 
 // Certain constants
@@ -43,9 +46,9 @@ namespace CPUM {
 
     cString getMicroarchitecture();
 
-    cString getMicroarchitectureAMD(uint32 familyNumber, uint32 model, uint32 extendedModel);
+    cString getMicroarchitectureAMD(uint32 familyNumber);
 
-    cString getMicroarchitectureIntel(uint32 familyNumber, uint32 model, uint32 extendedModel);
+    cString getMicroarchitectureIntel(uint32 familyNumber);
 
     uint32 getModelNumber();
 
@@ -59,7 +62,14 @@ namespace CPUM {
 
     uint32 getFeatures2();
 
+    uint32 getFn8000_0001_ECX();
+
     bool getBit(uint32 value, uint8 bit);
+
+    // Other specifications
+    uint32 getNC();
+
+    uint32 getCoresPerProcessor();
 
     // CPU features
     bool hasSSE3();
@@ -138,10 +148,16 @@ namespace CPUM {
 
     bool hasHTT();
 
+    // Features Fn8000_0001_ECX
+    bool hasCmpLegacy();
+
     // Monitoring CPU performance
+    // Mhz
     uint32 avgCoreFrequency();
 
     float avgCoreFrequencyGHz();
+
+    std::vector<uint32> getCoreFrequencies();
 }
 
 

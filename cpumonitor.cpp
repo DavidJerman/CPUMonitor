@@ -1,4 +1,5 @@
 #include <cstring>
+#include <numeric>
 
 #include "cpumonitor.h"
 
@@ -153,8 +154,8 @@ uint32 CPUM::getFamilyNumber() {
     __asm__("pop %rbx\n\t");
     __asm__("pop %rax\n\t");
 
-    uint8 baseFamily{0};
-    uint8 extendedFamily{0};
+    uint8 baseFamily;
+    uint8 extendedFamily;
 
     baseFamily = (data >> 8) & 15;
     if (baseFamily < 15) {
@@ -221,9 +222,9 @@ cString CPUM::getMicroarchitecture() {
 
     // This check probably works, but I would have to check
     if (std::strcmp(vendorName, AMDCpuVendor) == 0)
-        return getMicroarchitectureAMD(familyNumber, getBaseModelNumber(), getExtendedModelNumber());
+        return getMicroarchitectureAMD(familyNumber);
     else if (std::strcmp(vendorName, IntelCpuVendor) == 0)
-        return getMicroarchitectureIntel(familyNumber, getBaseModelNumber(), getExtendedModelNumber());
+        return getMicroarchitectureIntel(familyNumber);
     else
         return "Unknown CPU vendor";
 }
@@ -232,9 +233,9 @@ cString CPUM::getMicroarchitecture() {
 // This is just for AMD for now
 // Works with CPU generations up to Zen 4
 // Data taken from https://en.wikipedia.org/wiki/List_of_AMD_CPU_microarchitectures
-cString CPUM::getMicroarchitectureAMD(uint32 familyNumber, uint32 model, uint32 extendedModel) {
+cString CPUM::getMicroarchitectureAMD(uint32 familyNumber) {
     cString microarchitecture;
-    auto _model = (extendedModel << 4) + model;
+    auto _model = getModelNumber();
 
     switch (familyNumber) {
         case 5:
@@ -358,9 +359,9 @@ cString CPUM::getMicroarchitectureAMD(uint32 familyNumber, uint32 model, uint32 
 
 // This requires modification
 // https://en.wikichip.org/wiki/intel/cpuid#Family_4
-cString CPUM::getMicroarchitectureIntel(uint32 familyNumber, uint32 model, uint32 extendedModel) {
+cString CPUM::getMicroarchitectureIntel(uint32 familyNumber) {
     cString microarchitecture;
-    auto _model = (extendedModel << 4) + model;
+    auto _model = getModelNumber();
 
     switch (familyNumber) {
         case 3: {
@@ -577,14 +578,14 @@ uint32 CPUM::getModelNumber() {
     __asm__("pop %rbx\n\t");
     __asm__("pop %rax\n\t");
 
-    uint8 baseModel{0};
-    uint8 extendedModel{0};
-    auto baseFamily = getFamilyNumber();
+    uint8 baseModel;
+    uint8 extendedModel;
+//    auto baseFamily = getFamilyNumber();
 
     baseModel = (data >> 4) & 15;
-    if (baseFamily < 15) {
-        return baseModel;
-    }
+//    if (baseFamily < 15) {
+//        return baseModel;
+//    }
     extendedModel = (data >> 16) & 15;
     auto model = (extendedModel << 4) + baseModel;
 
@@ -703,8 +704,89 @@ uint32 CPUM::getFeatures2() {
 }
 
 
+uint32 CPUM::getFn8000_0001_ECX() {
+    uint32 data;
+
+    __asm__("push %rax\n\t");
+    __asm__("push %rbx\n\t");
+    __asm__("push %rcx\n\t");
+    __asm__("push %rdx\n\t");
+
+    __asm__("mov $0x80000001, %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%ecx, %0\n\t":"=r" (data));
+
+    __asm__("pop %rdx\n\t");
+    __asm__("pop %rcx\n\t");
+    __asm__("pop %rbx\n\t");
+    __asm__("pop %rax\n\t");
+
+    return data;
+}
+
+
 bool CPUM::getBit(uint32 value, uint8 bit) {
     return (value >> bit) & 1;
+}
+
+
+uint32 CPUM::getNC() {
+    uint32 data;
+
+    __asm__("push %rax\n\t");
+    __asm__("push %rbx\n\t");
+    __asm__("push %rcx\n\t");
+    __asm__("push %rdx\n\t");
+
+    __asm__("mov $0x80000008, %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%ecx, %0\n\t":"=r" (data));
+
+    __asm__("pop %rdx\n\t");
+    __asm__("pop %rcx\n\t");
+    __asm__("pop %rbx\n\t");
+    __asm__("pop %rax\n\t");
+
+    uint32 cores = (data >> 0) & 255;
+
+    return cores + 1;
+}
+
+
+uint32 CPUM::getCoresPerProcessor() {
+    // Legacy method
+    uint32 data;
+
+    __asm__("push %rax\n\t");
+    __asm__("push %rbx\n\t");
+    __asm__("push %rcx\n\t");
+    __asm__("push %rdx\n\t");
+
+    __asm__("mov $0x1, %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%ebx, %0\n\t":"=r" (data));
+
+    auto lpc = (data >> 16) & 255;
+
+    __asm__("mov $0x80000008, %eax\n\t");
+    __asm__("cpuid\n\t");
+    __asm__("mov %%ecx, %0\n\t":"=r" (data));
+
+    auto ApicIdCoreIdSize = (data >> 0) & 0x0F;
+
+    __asm__("pop %rdx\n\t");
+    __asm__("pop %rcx\n\t");
+    __asm__("pop %rbx\n\t");
+    __asm__("pop %rax\n\t");
+
+    if (ApicIdCoreIdSize == 0) {
+        if (!hasHTT())
+            return 1;
+        if (hasHTT() && hasCmpLegacy())
+            return lpc;
+    } else {
+        return 69;
+    }
 }
 
 
@@ -894,34 +976,68 @@ bool CPUM::hasSSE2() {
 }
 
 
-// TODO: This works a bit differently - check documentation
 bool CPUM::hasHTT() {
     return getBit(getFeatures2(), 28);
+}
+
+
+bool CPUM::hasCmpLegacy() {
+    return getBit(getFn8000_0001_ECX(), 1);
 }
 
 
 // Monitoring CPU performance
 // Linux only - this implementation uses the linux system files
 // to determine the CPU frequency
+// Looking for a "universal" solution
 uint32 CPUM::avgCoreFrequency() {
-    auto fileName = cpuinfoFile;
-    std::ifstream ifStream;
+    auto frequencies = getCoreFrequencies();
 
-    ifStream.open(fileName);
+    float sum;
+    sum = std::accumulate(frequencies.begin(), frequencies.end(), 0.0f);
 
-    if (!ifStream.good()) {
-        return 0;
-    }
-
-    char * line {nullptr};
-    while (!ifStream.eof()) {
-
-    }
-
-    return 0.f;
+    return (uint32)(sum / (float)frequencies.size());
 }
 
 
 float CPUM::avgCoreFrequencyGHz() {
     return (float) avgCoreFrequency() / 1000.0f;
 }
+
+
+// Frequencies are saved in order
+std::vector<uint32> CPUM::getCoreFrequencies() {
+    bool proc {false};
+    std::vector<uint32> frequencies;
+
+    auto fileName = cpuinfoFile;
+    std::ifstream ifStream;
+
+    ifStream.open(fileName);
+
+    if (!ifStream.good()) {
+        return {};
+    }
+
+
+    std::string buffer, flag, arg;
+    while (!ifStream.eof()) {
+        std::getline(ifStream, buffer);
+        flag = buffer.substr(0, buffer.find(':'));
+        arg = buffer.substr(buffer.find(':') + 1);
+        if (!proc) {
+            if (flag.find("processor") == 0) {
+                proc = true;
+            }
+        }
+        if (proc) {
+            if (flag.find("cpu MHz") == 0) {
+                auto freq = stof(arg);
+                frequencies.push_back((uint32)freq);
+            }
+        }
+    }
+
+    return std::move(frequencies);
+}
+

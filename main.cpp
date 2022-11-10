@@ -20,26 +20,6 @@ int main() {
     std::cout << "Extended Family: " << CPUM::getFamilyExtendedNumber() << std::endl;
     std::cout << "Stepping: " << CPUM::getSteppingNumber() << std::endl;
 
-    // Other important data
-    int localAPICID{0},
-            logicalProcessorCount{0},
-            clFlushSize{0},
-            _8BitBrandID{0};
-    bool htt{true};
-
-    _8BitBrandID = data[1] & 255;
-    clFlushSize = (data[1] >>= 8) & 255;
-    logicalProcessorCount = (data[1] >>= 8) & 255;
-    localAPICID = (data[1] >>= 8) & 255;
-    // Check for cmp legacy!
-    htt = (data[3] >> 28) & 1;
-
-    std::cout << "8-Bit Brand: " << _8BitBrandID << std::endl;
-    std::cout << "Cl Flush Size: " << clFlushSize << std::endl;
-    // std::cout << "Hyper-threading: " << (htt ? "No" : "Yes") << std::endl;
-    std::cout << "Logical Processor Count: " << logicalProcessorCount << std::endl;
-    std::cout << "Local APIC ID: " << localAPICID << std::endl;
-
     // Feature identifiers 1
     std::cout << "SSE3: " <<  (CPUM::hasSSE3() ? "Yes" : "No") << std::endl;
     std::cout << "PCLMULQDQ: " << (CPUM::hasPCLMULQDQ() ? "Yes" : "No") << std::endl;
@@ -87,6 +67,13 @@ int main() {
 
     // Frequency - windows
     std::cout << "Linux CPU frequency: " << CPUM::avgCoreFrequencyGHz() << " GHz" << std::endl;
+    auto frequencies = CPUM::getCoreFrequencies();
+    for (uint32 i = 0; i < frequencies.size(); ++i) {
+        std::cout << i << ": " << frequencies[i] << " MHz" << std::endl;
+    }
+
+    // Core count
+    std::cout << "No. cores: " << CPUM::getNC() << std::endl;
 
     return 0;
 }
